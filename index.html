@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR Аватар-Ассистент Стана</title>
+
+    <!-- 1. Подключение A-Frame -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <!-- 2. Подключение AR.js для A-Frame -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <!-- 3. Подключение aframe-extras для работы с анимациями (animation-mixer) -->
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.0/dist/aframe-extras.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #ui-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 500px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 15px;
+            color: white;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #chat-output {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 60px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        #input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        #text-input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        #mic-btn {
+            background: #ff4757;
+            color: white;
+        }
+
+        #mic-btn.listening {
+            background: #2ed573;
+            animation: pulse 1.5s infinite;
+        }
+
+        #send-btn {
+            background: #1e90ff;
+            color: white;
+        }
+
+        #send-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .arjs-loader { display: none; }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui-container">
+        <div id="chat-output">Привет! Я AR-ассистент прокатного стана. Спросите меня о характеристиках оборудования (например: "Какая мощность двигателя?" или "Из чего сделаны валки?").</div>
+        <div id="input-row">
+            <button id="mic-btn" class="btn">🎤</button>
+            <input type="text" id="text-input" placeholder="Введите вопрос...">
+            <button id="send-btn" class="btn">➤</button>
+            <button id="stop-btn" class="btn" style="display: none; background: #ff6b6b;">⏹</button>
+        </div>
+    </div>
+
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+        <a-assets>
+            <a-asset-item id="tank-model" src="./models/StanNMSTU2.0.glb"></a-asset-item>
+            <!-- ЗАМЕНИТЕ src НА ПУТЬ К ВАШЕМУ АВАТАРУ, ЕСЛИ ОН ЕСТЬ -->
+            <!-- <a-asset-item id="avatar-model" src="./models/avatar.glb"></a-asset-item> -->
+        </a-assets>
+
+        <a-marker type="pattern" url="./pattern-Stan_pattern.patt">
+            <!-- Целевой объект (стан) -->
+            <a-entity id="target-object" gltf-model="#tank-model" position="0 0 0" rotation="0 0 0" scale="0.5 0.5 0.5"
+                animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"></a-entity>
+            
+            <!-- Аватар (заглушка, добавьте свою модель) -->
+            <a-entity id="avatar" gltf-model="#avatar-model" position="0 0.5 -1" rotation="0 0 0" scale="1 1 1"
+                animation-mixer="clip: Idle; loop: true; crossFadeDuration: 0.5"></a-entity>
+        </a-marker>
+
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        // ==========================================
+        // 1. КОНФИГУРАЦИЯ
+        // ==========================================
+        const OPENROUTER_API_KEY = "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";
+        const OPENROUTER_API_KEY = "";
+        const MODEL_NAME = "stealth/space-bunny-alpha";
+
+        const avatarEntity = document.querySelector('#avatar');
+        const objectEntity = document.querySelector('#target-object');
+        const chatOutput = document.getElementById('chat-output');
+        const textInput = document.getElementById('text-input');
+        const micBtn = document.getElementById('mic-btn');
+        const sendBtn = document.getElementById('send-btn');
+
+        const SYSTEM_PROMPT = `Ты — лаконичный AR-ассистент оператора прокатного стана. Твоя задача — отвечать на вопросы пользователя СТРОГО на основе предоставленных ниже технических характеристик.
+
+ЖЕСТКИЕ ПРАВИЛА ОТВЕТОВ:
+1. МАКСИМАЛЬНАЯ КРАТКОСТЬ: Отвечай прямым ответом на вопрос. Используй не более 1-2 предложений, если пользователь не попросил "подробно", "полное описание" или "все характеристики".
+2. ЗАПРЕТ НА САММАРИ: Если пользователь спрашивает "Что такое стан?" или "Для чего он нужен?", отвечай ТОЛЬКО его общим назначением: "Это оборудование для пластической деформации металла". НЕ перечисляй узлы, двигатели и размеры, если об этом не спросили конкретно.
+3. КОНКРЕТИКА: Если спрашивают про конкретный узел (например, "какой двигатель?"), назови только его ключевые параметры из текста. Не приплетай другие узлы.
+4. НЕИЗВЕСТНОЕ: Если информации в тексте нет, отвечай строго: "В моей базе данных нет информации об этом элементе". Не выдумывай факты.
+5. ФОРМАТ: Пиши обычным текстом, без использования markdown (без звездочек **, без списков -), чтобы текст был идеально готов для голосовой озвучки.
+
+ТЕХНИЧЕСКИЕ ХАРАКТЕРИСТИКИ СТАНА:
+1. Валки: Назначение: Пластическая деформация металла. Материал: Чугун. Состояние: Гладкие. Обработка: Шлифование. Диаметр бочки: 200 мм. Длина бочки: 450 мм. Диаметр шейки: 75 мм. Длина шейки: 100 мм. Диаметр приводного конца: наружный 65 мм, внутренний 50 мм. Длина приводного конца: 100 мм.
+2. Привод стана (двигатель): Род тока: Переменный. Тип: Асинхронный. Напряжение: 380 В. Мощность: 4,2 кВт. Обороты: 1450 об/мин. Реверсивность: Не реверсивный. Регулировка оборотов: Отсутствует. Пусковое устройство: Кнопочное.
+3. Коренная муфта: Назначение: Соединение от валов редуктора к шестеренной клети. Тип: Жесткая. Диаметр: 350 мм. Длина: 270 мм.
+4. Моторная муфта: Назначение: Соединение от двигателя к редуктору. Тип: Жесткая. Диаметр: 150 мм. Длина: 200 мм.
+5. Нажимное устройство: Назначение: Регулировка зазора между валками. Тип: Винтовое. Шаг нарезки: 6 мм. Диаметр винта: внутренний 61 мм, внешний 68 мм. Привод: Штурвал, редуктор. Передаточное число редуктора: 1,2. Значение одного оборота штурвала: 5 мм. Макс. высота подъёма верхнего валка: 80 мм. Смазка: Солидол.
+6. Редуктор: Количество: 1. Назначение: Снижение оборотов двигателя. Тип: Двухступенчатый червячный. Тип зубьев: Шевронный. Общее передаточное число: 525. Смазка: Автол.
+7. Станина: Назначение: Установка и фиксация валков и арматуры. Материал: Сталь. Ширина окна: 240 мм. Высота окна: 570 мм. Общая высота: 820 мм. Расстояние между станинами: 530 мм. Расстояние от пола до линии прокатки: 900 мм.
+8. Уравновешивающее устройство: Назначение: Удержание подушек верхнего валка, прижатие верхнего валка к нажимному устройству. Тип: Пружинный.
+9. Шпиндель: Назначение: Передача крутящего момента. Тип: Универсальный. Диаметр: 50 мм. Длина: 400 мм.
+10. Шестеренная клеть: Назначение: Передача крутящего момента на 2 вала. Тип: ДУО. Станина: Литая. Диаметр начальной окружности: 220 мм. Тип зуба: Прямой. Подшипники шестеренных валков: Качения. Смазка зубьев и подшипников: Автол.
+11. Подушки: Назначение: Установка подшипников. Материал: Сталь. Высота: 210 мм. Ширина: 200 мм. Осевая регулировка: Болтовая.`;
+        
+
+        // ==========================================
+        // 2. WEB SPEECH API (Распознавание и Синтез)
+        // ==========================================
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ru-RU';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                micBtn.classList.add('listening');
+                chatOutput.textContent = "Слушаю ваш вопрос...";
+            };
+
+            recognition.onend = () => {
+                micBtn.classList.remove('listening');
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                textInput.value = transcript;
+                processUserInput(transcript);
+            };
+        } else {
+            micBtn.style.display = 'none';
+            chatOutput.textContent = "Голосовой ввод не поддерживается вашим браузером.";
+        }
+
+        function cleanMarkdown(text) {
+            return text
+                .replace(/\*\*/g, '')      // Жирный текст
+                .replace(/\*/g, '')        // Курсив
+                .replace(/__/g, '')        // Подчеркивание
+                .replace(/`/g, '')         // Код
+                .replace(/#/g, '')         // Заголовки
+                .replace(/\n/g, ' ');      // Переносы строк
+        }
+
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                // Очищаем текст от markdown
+                const cleanText = cleanMarkdown(text);
+                
+                // Останавливаем предыдущую речь
+                window.speechSynthesis.cancel();
+
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                utterance.lang = 'ru-RU';
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+
+                // Когда начинает говорить
+                utterance.onstart = () => {
+                    if(avatarEntity) setAvatarAnimation('Talk');
+                    if(objectEntity) objectEntity.setAttribute('visible', 'true');
+                    // Показываем кнопку остановки
+                    stopBtn.style.display = 'inline-block';
+                    sendBtn.disabled = true;
+                };
+
+                // Когда закончил говорить
+                utterance.onend = () => {
+                    if(avatarEntity) setAvatarAnimation('Idle');
+                    // Скрываем кнопку остановки
+                    stopBtn.style.display = 'none';
+                    sendBtn.disabled = false;
+                };
+
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function stopSpeech() {
+            window.speechSynthesis.cancel();
+            if(avatarEntity) setAvatarAnimation('Idle');
+            stopBtn.style.display = 'none';
+            sendBtn.disabled = false;
+        }
+
+        function setAvatarAnimation(animationName) {
+            if (avatarEntity) {
+                avatarEntity.setAttribute('animation-mixer', 'clip', animationName);
+            }
+        }
+
+        // ==========================================
+        // 3. ЛОГИКА БОТА (OPENROUTER API)
+        // ==========================================
+        async function processUserInput(text) {
+            chatOutput.textContent = `Вы: ${text}`;
+            sendBtn.disabled = true;
+            sendBtn.textContent = "⏳";
+
+            try {
+                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                        "HTTP-Referer": window.location.href, // Требуется OpenRouter
+                        "X-Title": "AR Stan Assistant",       // Требуется OpenRouter
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        "model": MODEL_NAME,
+                        "messages": [
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": text}
+                        ]
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Ошибка API: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const botResponse = data.choices[0].message.content;
+
+                chatOutput.textContent = `Ассистент: ${botResponse}`;
+                speakText(botResponse);
+
+            } catch (error) {
+                console.error("Ошибка при запросе к нейросети:", error);
+                const errorMsg = "Произошла ошибка при соединении с нейросетью. Проверьте API-ключ или интернет.";
+                chatOutput.textContent = `Ассистент: ${errorMsg}`;
+                speakText(errorMsg);
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = "➤";
+                textInput.value = '';
+            }
+        }
+
+        // ==========================================
+        // 4. ОБРАБОТЧИКИ СОБЫТИЙ UI
+        // ==========================================
+        micBtn.addEventListener('click', () => {
+            if (recognition) {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.warn("Распознавание уже запущено или ошибка:", e);
+                }
+            }
+        });
+
+        sendBtn.addEventListener('click', () => {
+            const text = textInput.value.trim();
+            if (text) {
+                processUserInput(text);
+            }
+        });
+
+        textInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendBtn.click();
+            }
+        });
+
+        const stopBtn = document.getElementById('stop-btn');
+        stopBtn.addEventListener('click', () => {
+            stopSpeech();
+        });
+    </script>
+</body>
+</html>
