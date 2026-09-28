@@ -1,0 +1,14 @@
+Platform - станина
+ElecMotor - Электродвигатель 
+PinionStand - Шестерная клеть
+Rolls - Валки
+Spindle - Шпиндель (Spindle1, Spindle2 в модели)
+MotorCoupling - Моторная муфта
+MasterCoupling - Коренная муфта
+Gearbox - Редуктор 
+BalancingDevice - Уравновешивающее устройство
+ScrewdownMechanism - Нажимное устройство
+
+(не обозвано в модели)
+Подушка — BearingChock
+Подшипник — Bearing
