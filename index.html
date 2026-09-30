@@ -4,196 +4,222 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Аватар-Ассистент Стана</title>
+    <title>AR Ассистент Стана</title>
 
-    <!-- 1. Подключение A-Frame -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <!-- 2. Подключение AR.js для A-Frame -->
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <!-- 3. Подключение aframe-extras для работы с анимациями (animation-mixer) -->
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.0/dist/aframe-extras.min.js"></script>
 
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        * {
+            box-sizing: border-box; /* Отступы теперь ВНУТРИ ширины, а не плюсуются к ней */
         }
 
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+
+        /* === КНОПКА ЛЕВОЙ ПАНЕЛИ === */
+        #toggle-panel-btn {
+            position: absolute; top: 20px; left: 0;
+            width: 45px; height: 45px;
+            background: #1e90ff; color: white; border: none;
+            border-radius: 0 10px 10px 0; cursor: pointer;
+            z-index: 20; font-size: 22px;
+            display: flex; align-items: center; justify-content: center;
+            transition: left 0.3s ease;
+        }
+        #toggle-panel-btn.panel-open { left: 320px; }
+
+        /* === ЛЕВАЯ ПАНЕЛЬ === */
+        #info-panel {
+            position: absolute; top: 20px; left: -340px;
+            width: 320px; max-height: 85vh;
+            background: rgba(0,0,0,0.85); border-radius: 0 15px 15px 0;
+            padding: 15px; color: white; z-index: 15;
+            transition: left 0.3s ease; overflow-y: auto;
+        }
+        #info-panel.open { left: 0; }
+        #info-panel h3 { margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
+
+        .part-card {
+            background: rgba(255,255,255,0.1); margin-bottom: 12px;
+            padding: 12px; border-radius: 8px; cursor: pointer;
+            transition: background 0.2s; border-left: 3px solid transparent;
+        }
+        .part-card:hover { background: rgba(255,255,255,0.2); border-left: 3px solid #1e90ff; }
+        .part-card.highlighted { background: rgba(255,235,59,0.2); border-left: 3px solid #FFFF00; }
+        .part-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 6px; font-size: 15px; }
+        .part-desc { font-size: 12px; color: #ddd; line-height: 1.4; }
+        .speak-btn {
+            background: none; border: none; color: #2ed573;
+            cursor: pointer; font-size: 18px; padding: 5px;
+            border-radius: 50%; transition: background 0.2s;
+        }
+        .speak-btn:hover { background: rgba(46,213,115,0.2); }
+
+        /* === КНОПКА ОТКРЫТИЯ ЧАТА === */
+        #toggle-chat-btn {
+            position: absolute; bottom: 20px; right: 20px;
+            width: 60px; height: 60px;
+            background: #1e90ff; color: white; border: none;
+            border-radius: 50%; cursor: pointer;
+            z-index: 20; font-size: 28px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        #toggle-chat-btn:hover { background: #1565c0; }
+        /* Когда чат открыт — кнопка плавно исчезает (закрывать будем крестиком в шапке чата) */
+        #toggle-chat-btn.chat-open {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.5);
+        }
+
+        /* === КОНТЕЙНЕР ЧАТА (снизу, растёт вверх) === */
         #ui-container {
             position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 500px;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 15px;
+            bottom: -100%;
+            right: 20px;
+            width: 360px;
+            max-height: 420px;
+            background: rgba(0,0,0,0.85);
+            border-radius: 15px 15px 0 0;
             padding: 15px;
             color: white;
-            z-index: 10;
+            z-index: 15;
             display: flex;
             flex-direction: column;
             gap: 10px;
+            transition: bottom 0.3s ease;
+        }
+        #ui-container.open { bottom: 0; }
+
+        #chat-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            padding-bottom: 8px; margin-bottom: 5px;
+        }
+        #chat-header h3 { margin: 0; font-size: 16px; }
+        #close-chat-btn {
+            background: none; border: none; color: white;
+            font-size: 22px; cursor: pointer; padding: 0 5px;
         }
 
-        #chat-output {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 10px;
-            min-height: 60px;
-            max-height: 150px;
-            overflow-y: auto;
-            font-size: 14px;
-            line-height: 1.4;
+        #chat-history {
+            flex: 1; overflow-y: auto; max-height: 280px;
+            display: flex; flex-direction: column; gap: 8px;
+            padding-right: 5px;
         }
+        #chat-history::-webkit-scrollbar { width: 6px; }
+        #chat-history::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
 
-        #input-row {
-            display: flex;
-            gap: 10px;
+        .msg {
+            padding: 8px 12px; border-radius: 12px;
+            font-size: 13px; line-height: 1.4; max-width: 85%; word-wrap: break-word;
         }
+        .msg.user { background: rgba(30,144,255,0.4); align-self: flex-end; }
+        .msg.assistant { background: rgba(255,255,255,0.15); align-self: flex-start; }
 
+        #input-row { display: flex; gap: 8px; }
         #text-input {
-            flex: 1;
-            padding: 10px;
-            border-radius: 8px;
-            border: none;
-            outline: none;
-            font-size: 14px;
+            flex: 1; padding: 10px; border-radius: 8px; border: none;
+            outline: none; font-size: 14px; background: rgba(255,255,255,0.1); color: white;
         }
-
+        #text-input::placeholder { color: rgba(255,255,255,0.5); }
         .btn {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.2s;
+            padding: 10px 12px; border: none; border-radius: 8px;
+            cursor: pointer; font-weight: bold; transition: background 0.2s;
+        }
+        #mic-btn { background: #ff4757; color: white; }
+        #mic-btn.listening { background: #2ed573; animation: pulse 1.5s infinite; }
+        #send-btn { background: #1e90ff; color: white; }
+        #send-btn:disabled { background: #555; cursor: not-allowed; }
+        #stop-btn { background: #ff6b6b; color: white; display: none; }
+        @keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.1)} 100%{transform:scale(1)} }
+
+        /* === МОБИЛЬНАЯ ВЕРСИЯ === */
+        @media (max-width: 768px) {
+            #info-panel {
+                width: 85vw; left: -90vw;
+            }
+            #info-panel.open { left: 0; }
+            #toggle-panel-btn.panel-open { left: 85vw; }
+
+            /* Чат на всю ширину экрана, без съезжания */
+            #ui-container {
+                left: 0;
+                right: 0;
+                width: 100%;
+                max-height: 60vh;
+            }
+
+            #chat-history { max-height: 35vh; }
         }
 
-        #mic-btn {
-            background: #ff4757;
-            color: white;
+        @media (max-width: 480px) {
+            #toggle-panel-btn { width: 40px; height: 40px; font-size: 18px; }
+            #toggle-chat-btn { width: 55px; height: 55px; font-size: 24px; }
         }
-
-        #mic-btn.listening {
-            background: #2ed573;
-            animation: pulse 1.5s infinite;
-        }
-
-        #send-btn {
-            background: #1e90ff;
-            color: white;
-        }
-
-        #send-btn:disabled {
-            background: #555;
-            cursor: not-allowed;
-        }
-
-        #stop-btn {
-            background: #ff6b6b;
-            color: white;
-            display: none;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-
-        .arjs-loader { display: none; }
     </style>
 </head>
 
 <body>
 
+    <!-- Кнопка открытия левой панели -->
+    <button id="toggle-panel-btn" title="Справочник деталей">☰</button>
+
+    <!-- Левая информационная панель -->
+    <div id="info-panel">
+        <h3>📋 Справочник деталей</h3>
+        <div id="parts-list"></div>
+    </div>
+
+    <!-- Кнопка открытия чата -->
+    <button id="toggle-chat-btn" title="Открыть чат">💬</button>
+
+    <!-- Контейнер чата -->
     <div id="ui-container">
-        <div id="chat-output">Привет! Я AR-ассистент прокатного стана. Спросите меня о характеристиках оборудования (например: "Какая мощность двигателя?" или "Из чего сделаны валки?").</div>
+        <div id="chat-header">
+            <h3>💬 Чат с ассистентом</h3>
+            <button id="close-chat-btn" title="Закрыть чат">✕</button>
+        </div>
+        <div id="chat-history">
+            <div class="msg assistant">Привет! Я AR-ассистент. Спросите о характеристиках оборудования или выберите деталь в меню слева.</div>
+        </div>
         <div id="input-row">
-            <button id="mic-btn" class="btn">🎤</button>
+            <button id="mic-btn" class="btn" title="Голосовой ввод">🎤</button>
             <input type="text" id="text-input" placeholder="Введите вопрос...">
-            <button id="send-btn" class="btn">➤</button>
-            <button id="stop-btn" class="btn">⏹</button>
+            <button id="send-btn" class="btn" title="Отправить">➤</button>
+            <button id="stop-btn" class="btn" title="Остановить речь"></button>
         </div>
     </div>
 
-    <!-- Добавлены настройки рендера для лучшей работы со свечением (emissive) -->
-    <a-scene 
-        embedded 
+    <!-- 3D Сцена -->
+    <a-scene
+        embedded
         arjs="sourceType: webcam; debugUIEnabled: false;"
         renderer="physicallyCorrectLights: true; toneMapping: ACESFilmic; toneMappingExposure: 2.0; colorManagement: true;">
-        
+
         <a-assets>
             <a-asset-item id="tank-model" src="./models/StanNew.glb"></a-asset-item>
         </a-assets>
 
         <a-marker type="pattern" url="./pattern-Stan_pattern.patt">
-            
-            <!-- ========== СИЛЬНОЕ СТУДИЙНОЕ ОСВЕЩЕНИЕ ========== -->
-            
-            <!-- Ambient - базовое заполнение, чтобы не было чёрных теней -->
-            <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
-            
-            <!-- Основной свет - сверху-спереди-справа (как на скриншоте Blender) -->
-            <a-light type="directional" 
-                    color="#ffffff" 
-                    intensity="2.5" 
-                    position="2 3 2"
-                    target="#target-object"></a-light>
-            
-            <!-- Заполняющий свет - сверху-слева-сзади -->
-            <a-light type="directional" 
-                    color="#ffffff" 
-                    intensity="1.8" 
-                    position="-2 2 -2"
-                    target="#target-object"></a-light>
-            
-            <!-- Контровой свет - сзади-сверху (подчёркивает контуры) -->
-            <a-light type="directional" 
-                    color="#ffffff" 
-                    intensity="1.5" 
-                    position="0 3 -3"
-                    target="#target-object"></a-light>
-            
-            <!-- Подсветка снизу-спереди (убирает тени снизу) -->
-            <a-light type="directional" 
-                    color="#ffffff" 
-                    intensity="1.2" 
-                    position="1 -1 2"
-                    target="#target-object"></a-light>
-            
-            <!-- Point light прямо над моделью для бликов -->
-            <a-light type="point" 
-                    color="#ffffff" 
-                    intensity="2.0" 
-                    distance="15" 
-                    decay="1" 
-                    position="0 4 0"></a-light>
-            
-            <!-- Hemisphere light для естественного градиента небо/земля -->
-            <a-light type="hemisphere" 
-                    color="#ffffff" 
-                    groundColor="#aaaaaa" 
-                    intensity="0.8"></a-light>
 
-            <!-- Целевой объект (стан) -->
-            <a-entity id="target-object" 
-                    gltf-model="#tank-model" 
-                    position="0 0 0" 
-                    rotation="0 0 0" 
-                    scale="0.8 0.8 0.8">
+            <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
+            <a-light type="directional" color="#ffffff" intensity="2.5" position="2 3 2"></a-light>
+            <a-light type="directional" color="#ffffff" intensity="1.8" position="-2 2 -2"></a-light>
+            <a-light type="directional" color="#ffffff" intensity="1.5" position="0 3 -3"></a-light>
+            <a-light type="directional" color="#ffffff" intensity="1.2" position="1 -1 2"></a-light>
+            <a-light type="point" color="#ffffff" intensity="2.0" distance="15" decay="1" position="0 4 0"></a-light>
+            <a-light type="hemisphere" color="#ffffff" groundColor="#aaaaaa" intensity="0.8"></a-light>
+
+            <a-entity id="target-object"
+                      gltf-model="#tank-model"
+                      position="0 0 0"
+                      rotation="0 0 0"
+                      scale="0.8 0.8 0.8">
             </a-entity>
-            
-            <!-- Аватар (заглушка) -->
-            <a-entity id="avatar" 
-                    gltf-model="#avatar-model" 
-                    position="0 0.5 -1" 
-                    rotation="0 0 0" 
-                    scale="1 1 1"
-                    animation-mixer="clip: Idle; loop: true; crossFadeDuration: 0.5">
-            </a-entity>
+
         </a-marker>
 
         <a-entity camera></a-entity>
@@ -201,239 +227,248 @@
 
     <script>
         // ==========================================
-        // 1. КОНФИГУРАЦИЯ
+        // ДАННЫЕ ДЛЯ ЛЕВОЙ ПАНЕЛИ
         // ==========================================
+        const PARTS_DATA = [
+            { id: 'Platform', name: 'Станина', desc: 'Назначение: Установка и фиксация валков и арматуры. Материал: Сталь. Ширина окна: 240 мм. Высота окна: 570 мм. Общая высота: 820 мм. Расстояние между станинами: 530 мм.' },
+            { id: 'ElecMotor', name: 'Электродвигатель', desc: 'Род тока: Переменный. Тип: Асинхронный. Напряжение: 380 В. Мощность: 4,2 кВт. Обороты: 1450 об/мин. Не реверсивный. Пуск: кнопочный.' },
+            { id: 'PinionStand', name: 'Шестеренная клеть', desc: 'Назначение: Передача крутящего момента на 2 вала. Тип: ДУО. Станина литая. Диаметр начальной окружности: 220 мм. Тип зуба: прямой.' },
+            { id: 'Rolls', name: 'Валки', desc: 'Назначение: Пластическая деформация металла. Материал: Чугун. Гладкие, шлифованные. Диаметр бочки: 200 мм, длина: 450 мм.' },
+            { id: 'Spindel', name: 'Шпиндель', desc: 'Назначение: Передача крутящего момента. Тип: Универсальный. Диаметр: 50 мм. Длина: 400 мм.' },
+            { id: 'MotorCoupling', name: 'Моторная муфта', desc: 'Назначение: Соединение от двигателя к редуктору. Тип: Жесткая. Диаметр: 150 мм. Длина: 200 мм.' },
+            { id: 'MasterCoupling', name: 'Коренная муфта', desc: 'Назначение: Соединение от валов редуктора к шестеренной клети. Тип: Жесткая. Диаметр: 350 мм. Длина: 270 мм.' },
+            { id: 'Gearbox', name: 'Редуктор', desc: 'Назначение: Снижение оборотов двигателя. Двухступенчатый червячный, зубья шевронные. Передаточное число: 525. Смазка: Автол.' },
+            { id: 'BalancingDevice', name: 'Уравновешивающее устройство', desc: 'Назначение: Удержание подушек верхнего валка, прижатие к нажимному устройству. Тип: Пружинный.' },
+            { id: 'ScrewdownMechanism', name: 'Нажимное устройство', desc: 'Назначение: Регулировка зазора между валками. Тип: Винтовое. Один оборот штурвала = 5 мм. Макс. подъём: 80 мм.' }
+        ];
+
         let OPENROUTER_API_KEY = "";
         let MODEL_NAME = "";
 
-        const avatarEntity = document.querySelector('#avatar');
         const objectEntity = document.querySelector('#target-object');
-        const chatOutput = document.getElementById('chat-output');
+        const chatHistory = document.getElementById('chat-history');
         const textInput = document.getElementById('text-input');
         const micBtn = document.getElementById('mic-btn');
         const sendBtn = document.getElementById('send-btn');
         const stopBtn = document.getElementById('stop-btn');
+        const infoPanel = document.getElementById('info-panel');
+        const togglePanelBtn = document.getElementById('toggle-panel-btn');
+        const uiContainer = document.getElementById('ui-container');
+        const toggleChatBtn = document.getElementById('toggle-chat-btn');
+        const closeChatBtn = document.getElementById('close-chat-btn');
 
-        async function loadConfig() {
-            try {
-                const response = await fetch('./env.json');
-                if (!response.ok) {
-                    throw new Error(`HTTP ошибка: ${response.status}`);
-                }
-                const config = await response.json();
-                OPENROUTER_API_KEY = config.OPENROUTER_API_KEY;
-                MODEL_NAME = config.MODEL_NAME;
-                console.log("✅ Конфигурация успешно загружена из env.json");
-                
-                // Запускаем инициализацию приложения только после загрузки ключей
-                initializeApp();
-            } catch (error) {
-                console.error("❌ Ошибка загрузки env.json:", error);
-                chatOutput.textContent = "Ошибка: не удалось загрузить настройки. Убедитесь, что файл env.json существует и вы используете локальный сервер (не file://).";
+        // ==========================================
+        // ИНИЦИАЛИЗАЦИЯ UI
+        // ==========================================
+        function initUI() {
+            const partsList = document.getElementById('parts-list');
+            PARTS_DATA.forEach(part => {
+                const card = document.createElement('div');
+                card.className = 'part-card';
+                card.dataset.id = part.id;
+                card.innerHTML = `
+                    <div class="part-header">
+                        <span>${part.name}</span>
+                        <button class="speak-btn" title="Озвучить" data-id="${part.id}">🔊</button>
+                    </div>
+                    <div class="part-desc">${part.desc}</div>
+                `;
+                card.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('speak-btn')) return;
+                    document.querySelectorAll('.part-card').forEach(c => c.classList.remove('highlighted'));
+                    card.classList.add('highlighted');
+                    highlightPart(part.id);
+                    setTimeout(resetHighlights, 3000);
+                });
+                partsList.appendChild(card);
+            });
+
+            document.querySelectorAll('.speak-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const part = PARTS_DATA.find(p => p.id === btn.dataset.id);
+                    if (part) speakPartOnly(part.desc, part.id);
+                });
+            });
+
+            togglePanelBtn.addEventListener('click', () => {
+                infoPanel.classList.toggle('open');
+                togglePanelBtn.classList.toggle('panel-open');
+            });
+            
+            function toggleChat() {
+                uiContainer.classList.toggle('open');
+                toggleChatBtn.classList.toggle('chat-open');
+                toggleChatBtn.textContent = '💬'; // иконка всегда одна, т.к. кнопка скрывается когда чат открыт
             }
+
+            toggleChatBtn.addEventListener('click', toggleChat);
+            closeChatBtn.addEventListener('click', toggleChat);
+
+            loadChatHistory();
         }
 
         // ==========================================
-        // 2. ЛОГИКА ПОДСВЕТКИ МОДЕЛИ (ЧЕРЕЗ THREE.JS)
+        // ПОДСВЕТКА МОДЕЛИ
         // ==========================================
-
         const originalMaterials = new Map();
         let modelReady = false;
 
-        // Сохраняем материалы при загрузке
         objectEntity.addEventListener('model-loaded', () => {
-            console.log(" Модель загружена!");
-            
+            console.log("✅ Модель загружена!");
             setTimeout(() => {
-                // Получаем THREE.js объект модели
                 const model = objectEntity.object3D;
-                
-                if (!model) {
-                    console.error("❌ object3D не найден!");
-                    return;
-                }
-                
-                console.log(" Обход всех дочерних объектов THREE.js...");
+                if (!model) return;
                 let count = 0;
-                
-                // Обходим все дочерние объекты рекурсивно
                 model.traverse((child) => {
-                    if (child.isMesh && child.name) {
+                    if (child.isMesh && child.name && child.material) {
                         count++;
-                        console.log(`  [${count}] "${child.name}"`);
-                        
-                        // Сохраняем оригинальный материал
-                        if (child.material) {
-                            originalMaterials.set(child.name, {
-                                color: child.material.color ? child.material.color.getHex() : 0x808080,
-                                emissive: child.material.emissive ? child.material.emissive.getHex() : 0x000000,
-                                emissiveIntensity: child.material.emissiveIntensity || 0
-                            });
-                        }
+                        originalMaterials.set(child.name, {
+                            color: child.material.color ? child.material.color.getHex() : 0x808080,
+                            emissive: child.material.emissive ? child.material.emissive.getHex() : 0x000000,
+                            emissiveIntensity: child.material.emissiveIntensity || 0
+                        });
                     }
                 });
-                
-                console.log(`✅ Найдено mesh-объектов: ${count}`);
-                console.log("📋 Все имена:", Array.from(originalMaterials.keys()));
+                console.log(`Найдено mesh-объектов: ${count}`);
                 modelReady = true;
-            }, 1000);
+            }, 500);
         });
 
         function highlightPart(modelName) {
-            console.log(`💡 Подсветка: ${modelName}`);
             const model = objectEntity.object3D;
             if (!model) return;
-            
-            let highlighted = 0;
-            
             model.traverse((child) => {
-                if (child.isMesh && child.name) {
-                    // Точное совпадение или содержит имя
-                    if (child.name.toLowerCase().includes(modelName.toLowerCase())) {
-                        console.log(`  ✅ Найдено: ${child.name}`);
-                        
-                        if (child.material) {
-                            child.material = child.material.clone();
-                            child.material.color.setHex(0xFFFF00);
-                            child.material.emissive.setHex(0xFFFF00);
-                            child.material.emissiveIntensity = 0.8;
-                            child.material.needsUpdate = true;
-                            highlighted++;
-                        }
+                if (child.isMesh && child.name && child.name.toLowerCase().includes(modelName.toLowerCase())) {
+                    if (child.material) {
+                        child.material = child.material.clone();
+                        child.material.color.setHex(0xFFFF00);
+                        child.material.emissive.setHex(0xFFFF00);
+                        child.material.emissiveIntensity = 0.8;
+                        child.material.needsUpdate = true;
                     }
                 }
             });
-            
-            if (highlighted === 0) {
-                console.warn(`  ️ Не найдено: ${modelName}`);
-            }
         }
 
         function resetHighlights() {
-            console.log("🔄 Сброс подсветки");
             const model = objectEntity.object3D;
-            let reset = 0;
-            
+            if (!model) return;
             model.traverse((child) => {
                 if (child.isMesh && child.name && originalMaterials.has(child.name)) {
-                    const original = originalMaterials.get(child.name);
-                    
+                    const orig = originalMaterials.get(child.name);
                     if (child.material) {
-                        child.material.color.setHex(original.color);
-                        child.material.emissive.setHex(original.emissive);
-                        child.material.emissiveIntensity = original.emissiveIntensity;
+                        child.material.color.setHex(orig.color);
+                        child.material.emissive.setHex(orig.emissive);
+                        child.material.emissiveIntensity = orig.emissiveIntensity;
                         child.material.needsUpdate = true;
-                        reset++;
                     }
                 }
             });
-            
-            console.log(`  Восстановлено: ${reset}`);
+            document.querySelectorAll('.part-card').forEach(c => c.classList.remove('highlighted'));
         }
 
         // ==========================================
-        // 3. WEB SPEECH API (Распознавание и Синтез)
+        // ИСТОРИЯ ЧАТА
         // ==========================================
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = null;
-        
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'ru-RU';
-            recognition.continuous = false;
-            recognition.interimResults = false;
-
-            recognition.onstart = () => {
-                micBtn.classList.add('listening');
-                chatOutput.textContent = "Слушаю ваш вопрос...";
-            };
-
-            recognition.onend = () => {
-                micBtn.classList.remove('listening');
-            };
-
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                textInput.value = transcript;
-                processUserInput(transcript);
-            };
-        } else {
-            micBtn.style.display = 'none';
-            chatOutput.textContent = "Голосовой ввод не поддерживается вашим браузером.";
+        function addMessageToHistory(role, text) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `msg ${role}`;
+            msgDiv.textContent = text;
+            chatHistory.appendChild(msgDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            saveChatHistory();
         }
 
+        function saveChatHistory() {
+            const messages = [];
+            document.querySelectorAll('.msg').forEach(msg => {
+                messages.push({
+                    role: msg.classList.contains('user') ? 'user' : 'assistant',
+                    text: msg.textContent
+                });
+            });
+            localStorage.setItem('ar_chat_history', JSON.stringify(messages));
+        }
+
+        function loadChatHistory() {
+            const saved = localStorage.getItem('ar_chat_history');
+            if (saved) {
+                const messages = JSON.parse(saved);
+                chatHistory.innerHTML = '';
+                messages.forEach(msg => {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `msg ${msg.role}`;
+                    msgDiv.textContent = msg.text;
+                    chatHistory.appendChild(msgDiv);
+                });
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }
+        }
+
+        // ==========================================
+        // ОЗВУЧКА
+        // ==========================================
         function cleanMarkdown(text) {
-            return text
-                .replace(/\*\*/g, '')
-                .replace(/\*/g, '')
-                .replace(/__/g, '')
-                .replace(/`/g, '')
-                .replace(/#/g, '')
-                .replace(/\n/g, ' ');
+            return text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/`/g, '').replace(/#/g, '').replace(/\n/g, ' ');
         }
 
         function speakText(text, partsToHighlight = []) {
             if ('speechSynthesis' in window) {
-                const cleanText = cleanMarkdown(text);
                 window.speechSynthesis.cancel();
-
-                const utterance = new SpeechSynthesisUtterance(cleanText);
+                const utterance = new SpeechSynthesisUtterance(cleanMarkdown(text));
                 utterance.lang = 'ru-RU';
                 utterance.rate = 1.0;
-                utterance.pitch = 1.0;
 
                 utterance.onstart = () => {
-                    if(avatarEntity) setAvatarAnimation('Talk');
-                    if(objectEntity) objectEntity.setAttribute('visible', 'true');
-                    
                     stopBtn.style.display = 'inline-block';
                     sendBtn.disabled = true;
-
-                    // Подсвечиваем части, которые указала нейросеть
-                    console.log(" Подсвечиваем части:", partsToHighlight);
-                    partsToHighlight.forEach(partName => {
-                        highlightPart(partName);
-                    });
+                    partsToHighlight.forEach(p => highlightPart(p));
                 };
-
                 utterance.onend = () => {
-                    if(avatarEntity) setAvatarAnimation('Idle');
-                    
                     stopBtn.style.display = 'none';
                     sendBtn.disabled = false;
-                    
-                    setTimeout(() => {
-                        resetHighlights();
-                    }, 1500);
+                    setTimeout(resetHighlights, 1500);
                 };
-
                 window.speechSynthesis.speak(utterance);
             }
         }
 
+        function speakPartOnly(text, partId) {
+            window.speechSynthesis.cancel();
+            highlightPart(partId);
+            document.querySelectorAll('.part-card').forEach(c => c.classList.remove('highlighted'));
+            const card = document.querySelector(`.part-card[data-id="${partId}"]`);
+            if (card) card.classList.add('highlighted');
+
+            const utterance = new SpeechSynthesisUtterance(cleanMarkdown(text));
+            utterance.lang = 'ru-RU';
+            utterance.rate = 1.0;
+
+            utterance.onstart = () => { stopBtn.style.display = 'inline-block'; };
+            utterance.onend = () => {
+                stopBtn.style.display = 'none';
+                setTimeout(resetHighlights, 1000);
+            };
+            window.speechSynthesis.speak(utterance);
+        }
+
         function stopSpeech() {
             window.speechSynthesis.cancel();
-            if(avatarEntity) setAvatarAnimation('Idle');
             stopBtn.style.display = 'none';
             sendBtn.disabled = false;
             resetHighlights();
         }
 
-        function setAvatarAnimation(animationName) {
-            if (avatarEntity) {
-                avatarEntity.setAttribute('animation-mixer', 'clip', animationName);
-            }
-        }
-
         // ==========================================
-        // 4. СИСТЕМНЫЙ ПРОМПТ
+        // СИСТЕМНЫЙ ПРОМПТ
         // ==========================================
-        const SYSTEM_PROMPT = `Ты — лаконичный AR-ассистент оператора прокатного стана. Отвечай СТРОГО на основе технических характеристик ниже.
+        const SYSTEM_PROMPT = `Ты — лаконичный AR-ассистент оператора прокатного стана. Отвечай СТРОГО на основе технических характеристик.
 
 ПРАВИЛА:
-1. Отвечай кратко: 1-2 предложения, если не просят подробно.
+1. Отвечай кратко: 1-2 предложения.
 2. На вопрос "Что такое стан?" отвечай ТОЛЬКО: "Это оборудование для пластической деформации металла".
-3. Если информации нет, отвечай: "В моей базе данных нет информации об этом".
+3. Если информации нет: "В моей базе данных нет информации об этом".
 4. Пиши текст без markdown (без **, без -), готовый для голосовой озвучки.
 
 ФОРМАТ ОТВЕТА — СТРОГО JSON:
@@ -442,23 +477,10 @@
   "text": "Твой текстовый ответ пользователю"
 }
 
-Правила для поля "parts":
-- Указывай ТОЛЬКО те части, о которых идёт речь в ответе
-- Если часть не упоминается — НЕ включай её в список
-- Используй ТОЧНЫЕ имена из списка ниже
-- Если вопрос общий (например "что такое стан?"), оставь массив пустым: "parts": []
-
-ДОСТУПНЫЕ ИМЕНА ЧАСТЕЙ:
-- Platform (станина)
-- ElecMotor (электродвигатель, мотор, привод)
-- PinionStand (шестеренная клеть)
-- Rolls (валки)
-- Spindel (шпиндель)
-- MotorCoupling (моторная муфта)
-- MasterCoupling (коренная муфта)
-- Gearbox (редуктор)
-- BalancingDevice (уравновешивающее устройство)
-- ScrewdownMechanism (нажимное устройство)
+Правила для "parts":
+- Указывай ТОЛЬКО те части, о которых идёт речь.
+- Используй ТОЧНЫЕ имена: Platform, ElecMotor, PinionStand, Rolls, Spindel, MotorCoupling, MasterCoupling, Gearbox, BalancingDevice, ScrewdownMechanism.
+- Если вопрос общий, оставь массив пустым: "parts": []
 
 ТЕХНИЧЕСКИЕ ХАРАКТЕРИСТИКИ СТАНА:
 1. Валки: Назначение: Пластическая деформация металла. Материал: Чугун. Состояние: Гладкие. Обработка: Шлифование. Диаметр бочки: 200 мм. Длина бочки: 450 мм. Диаметр шейки: 75 мм. Длина шейки: 100 мм. Диаметр приводного конца: наружный 65 мм, внутренний 50 мм. Длина приводного конца: 100 мм.
@@ -472,17 +494,17 @@
 9. Шпиндель: Назначение: Передача крутящего момента. Тип: Универсальный. Диаметр: 50 мм. Длина: 400 мм.
 10. Шестеренная клеть: Назначение: Передача крутящего момента на 2 вала. Тип: ДУО. Станина: Литая. Диаметр начальной окружности: 220 мм. Тип зуба: Прямой. Подшипники шестеренных валков: Качения. Смазка зубьев и подшипников: Автол.
 11. Подушки: Назначение: Установка подшипников. Материал: Сталь. Высота: 210 мм. Ширина: 200 мм. Осевая регулировка: Болтовая.`;
+
         // ==========================================
-        // 5. ЛОГИКА БОТА
+        // ЗАПРОС К НЕЙРОСЕТИ
         // ==========================================
         async function processUserInput(text) {
-            chatOutput.textContent = `Вы: ${text}`;
+            addMessageToHistory('user', text);
+            textInput.value = '';
             sendBtn.disabled = true;
-            sendBtn.textContent = "⏳";
+            sendBtn.textContent = "";
 
             try {
-                console.log("Отправка запроса к OpenRouter...");
-                
                 const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -496,123 +518,86 @@
                         "messages": [
                             {"role": "system", "content": SYSTEM_PROMPT},
                             {"role": "user", "content": text}
-                        ],
-                        // ВАЖНО: просим модель отвечать только JSON
-                        "response_format": { "type": "json_object" }
+                        ]
                     })
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`HTTP ${response.status}: ${errorData.error?.message || response.statusText}`);
-                }
+                if (!response.ok) throw new Error(`Ошибка API: ${response.status}`);
 
                 const data = await response.json();
-                
-                if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-                    throw new Error("Нейросеть вернула пустой ответ");
-                }
-
-                const rawResponse = data.choices[0].message.content;
-                console.log("📦 Сырой ответ от нейросети:", rawResponse);
-
-                // Парсим JSON
-                let parsed;
-                try {
-                    parsed = JSON.parse(rawResponse);
-                } catch (e) {
-                    console.error("❌ Не удалось распарсить JSON:", e);
-                    // Если JSON сломался, пробуем вытащить его из текста
-                    const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-                    if (jsonMatch) {
-                        parsed = JSON.parse(jsonMatch[0]);
-                    } else {
-                        throw new Error("Нейросеть вернула не JSON");
-                    }
-                }
+                let contentString = data.choices[0].message.content;
+                contentString = contentString.replace(/```json/g, '').replace(/```/g, '').trim();
+                const parsed = JSON.parse(contentString);
 
                 const partsToHighlight = parsed.parts || [];
                 const userText = parsed.text || "Ответ не получен";
 
-                console.log("🎯 Части для подсветки:", partsToHighlight);
-                console.log("💬 Текст для пользователя:", userText);
-
-                chatOutput.textContent = `Ассистент: ${userText}`;
-                
-                // Озвучиваем и подсвечиваем
+                addMessageToHistory('assistant', userText);
                 speakText(userText, partsToHighlight);
 
             } catch (error) {
-                console.error("🔴 ОШИБКА:", error);
-                
-                let userErrorMsg = "Ошибка соединения.";
-                if (error.message.includes("401")) userErrorMsg = "Неверный API-ключ.";
-                else if (error.message.includes("429")) userErrorMsg = "Слишком много запросов.";
-                else if (error.message.includes("Failed to fetch")) userErrorMsg = "Нет интернета или CORS.";
-                else userErrorMsg = `Ошибка: ${error.message}`;
-
-                chatOutput.textContent = `Ассистент: ${userErrorMsg}`;
-                speakText(userErrorMsg, []);
+                console.error("Ошибка:", error);
+                const errorMsg = "Ошибка соединения. Проверьте API-ключ или интернет.";
+                addMessageToHistory('assistant', errorMsg);
             } finally {
                 sendBtn.disabled = false;
                 sendBtn.textContent = "➤";
-                textInput.value = '';
             }
         }
 
         // ==========================================
-        // 6. ОБРАБОТЧИКИ СОБЫТИЙ
+        // ЗАГРУЗКА КОНФИГА И ОБРАБОТЧИКИ
         // ==========================================
-        function initializeApp() {
-            // Web Speech API инициализация
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (SpeechRecognition) {
-                window.recognition = new SpeechRecognition();
-                window.recognition.lang = 'ru-RU';
-                window.recognition.continuous = false;
-                window.recognition.interimResults = false;
-
-                window.recognition.onstart = () => {
-                    micBtn.classList.add('listening');
-                    chatOutput.textContent = "Слушаю ваш вопрос...";
-                };
-
-                window.recognition.onend = () => {
-                    micBtn.classList.remove('listening');
-                };
-
-                window.recognition.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript;
-                    textInput.value = transcript;
-                    processUserInput(transcript);
-                };
-            } else {
-                micBtn.style.display = 'none';
-                chatOutput.textContent = "Голосовой ввод не поддерживается вашим браузером.";
+        async function loadConfig() {
+            try {
+                const response = await fetch('./env.json');
+                if (!response.ok) throw new Error(`HTTP ошибка: ${response.status}`);
+                const config = await response.json();
+                OPENROUTER_API_KEY = config.OPENROUTER_API_KEY;
+                MODEL_NAME = config.MODEL_NAME;
+                console.log("✅ Конфигурация загружена");
+                initUI();
+            } catch (error) {
+                console.error("Ошибка загрузки env.json:", error);
+                addMessageToHistory('assistant', "Ошибка: не удалось загрузить настройки.");
             }
-
-            // Обработчики кнопок
-            micBtn.addEventListener('click', () => {
-                if (window.recognition) {
-                    try { window.recognition.start(); } catch (e) { console.warn(e); }
-                }
-            });
-
-            sendBtn.addEventListener('click', () => {
-                const text = textInput.value.trim();
-                if (text) processUserInput(text);
-            });
-
-            stopBtn.addEventListener('click', () => {
-                stopSpeech();
-            });
-
-            textInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') sendBtn.click();
-            });
         }
 
-        // Запускаем загрузку конфигурации при старте
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ru-RU';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.onstart = () => micBtn.classList.add('listening');
+            recognition.onend = () => micBtn.classList.remove('listening');
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                textInput.value = transcript;
+                processUserInput(transcript);
+            };
+        } else {
+            micBtn.style.display = 'none';
+        }
+
+        micBtn.addEventListener('click', () => {
+            if (recognition) { try { recognition.start(); } catch (e) {} }
+        });
+        sendBtn.addEventListener('click', () => {
+            const text = textInput.value.trim();
+            if (text) processUserInput(text);
+        });
+        stopBtn.addEventListener('click', stopSpeech);
+        textInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendBtn.click(); });
+
+        chatHistory.addEventListener('dblclick', () => {
+            if (confirm('Очистить историю чата?')) {
+                localStorage.removeItem('ar_chat_history');
+                chatHistory.innerHTML = '<div class="msg assistant">История очищена.</div>';
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', loadConfig);
     </script>
 </body>
