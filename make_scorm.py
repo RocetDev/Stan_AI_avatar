@@ -35,10 +35,10 @@ manifest_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 
 # 2. Читаем ваш автономный HTML-код
 try:
-    with open('ar_app_standalone.html', 'r', encoding='utf-8') as f:
+    with open('app_standalone.html', 'r', encoding='utf-8') as f:
         standalone_html = f.read()
 except FileNotFoundError:
-    print("Ошибка: Сначала запустите предыдущий скрипт, чтобы создать 'ar_app_standalone.html'!")
+    print("Ошибка: Сначала запустите iframe_conventor.py, чтобы создать 'app_standalone.html'!")
     exit()
 
 # 3. Вшиваем SCORM API трекинг прямо перед закрывающим тегом </body> в приложении.

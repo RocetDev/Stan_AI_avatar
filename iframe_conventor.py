@@ -1,8 +1,8 @@
 import html
 import re
 
-# 1. Читаем исходный HTML-файл (теперь all_in_one.html)
-source_file = 'all_in_one.html'
+# 1. Читаем исходный HTML-файл (3D-просмотрщик без AR.js)
+source_file = 'viewer.html'
 
 try:
     with open(source_file, 'r', encoding='utf-8') as f:
@@ -25,8 +25,8 @@ def inline_scripts(match):
 # Заменяем ссылки на файлы реальным JS-кодом внутри тегов
 standalone_html = re.sub(r'<script\s+src="([^"]+)"></script>', inline_scripts, html_content)
 
-# 3. ФАЙЛ 1: Создаем полностью автономное AR-приложение (все библиотеки внутри)
-file_standalone = 'ar_app_standalone.html'
+# 3. ФАЙЛ 1: Создаем полностью автономное приложение (все библиотеки внутри)
+file_standalone = 'app_standalone.html'
 with open(file_standalone, 'w', encoding='utf-8') as f:
     f.write(standalone_html)
 print(f"1. Создан автономный файл: '{file_standalone}'")
@@ -42,7 +42,7 @@ iframe_node = (
 )
 
 # 5. ФАЙЛ 3: Создаем сниппет (только тег iframe для быстрой вставки на сторонние сайты)
-file_snippet = 'ar_iframe_snippet.html'
+file_snippet = 'iframe_snippet.html'
 with open(file_snippet, 'w', encoding='utf-8') as f:
     f.write(iframe_node)
 print(f"2. Создан сниппет для вставки на сайт: '{file_snippet}'")
@@ -58,7 +58,7 @@ preview_page = (
     f'</body>\n</html>'
 )
 
-file_preview = 'ar_preview_page.html'
+file_preview = 'preview_page.html'
 with open(file_preview, 'w', encoding='utf-8') as f:
     f.write(preview_page)
 print(f"3. Создана страница предпросмотра: '{file_preview}'")
