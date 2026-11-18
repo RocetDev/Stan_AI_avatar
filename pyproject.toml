@@ -1,0 +1,17 @@
+[project]
+name = "stan-ai-avatar"
+version = "0.1.0"
+description = "Веб-приложение: 3D/AR-просмотрщик стана с ИИ-ассистентом (FastAPI)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "httpx>=0.27",
+    "pydantic-settings>=2.4",
+]
+
+[dependency-groups]
+dev = []
+
+[tool.uv]
+package = false

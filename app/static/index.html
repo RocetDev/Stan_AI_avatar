@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Ассистент Стана</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/vendor/aframe.min.js"></script>
+    <script src="/static/vendor/aframe-extras.min.js"></script>
+</head>
+
+<body>
+    <button id="toggle-panel-btn" class="control-btn" title="Справочник деталей">☰</button>
+    <button id="toggle-chat-btn" title="Открыть чат">💬</button>
+    <button id="stop-btn" class="btn" title="Остановить речь">⏹</button>
+
+    <div id="info-panel">
+        <h3>📋 Детали стана</h3>
+        <div id="parts-list"></div>
+    </div>
+
+    <div id="toast"></div>
+
+    <div id="ui-container">
+        <div id="chat-header">
+            <h3>💬 Чат с ассистентом</h3>
+            <button id="close-chat-btn" title="Закрыть чат">✕</button>
+        </div>
+        <div id="chat-history"></div>
+        <div id="input-row">
+            <button id="mic-btn" class="btn" title="Голосовой ввод">🎤</button>
+            <input type="text" id="text-input" placeholder="Введите вопрос...">
+            <button id="send-btn" class="btn" title="Отправить">➤</button>
+        </div>
+    </div>
+
+    <a-scene embedded
+        renderer="physicallyCorrectLights: true; toneMapping: ACESFilmic; toneMappingExposure: 2.0; colorManagement: true;">
+
+        <a-assets>
+            <a-asset-item id="tank-model" src="/static/assets/StanNew.glb"></a-asset-item>
+        </a-assets>
+
+        <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="2.5" position="2 3 2"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="1.8" position="-2 2 -2"></a-light>
+        <a-light type="point" color="#ffffff" intensity="2.0" distance="15" decay="1" position="0 4 0"></a-light>
+        <a-light type="hemisphere" color="#ffffff" groundColor="#aaaaaa" intensity="0.8"></a-light>
+
+        <a-entity id="target-object" gltf-model="#tank-model" position="-1 1.17 0" rotation="0 0 0"
+            scale="0.8 0.8 0.8"></a-entity>
+
+        <a-entity id="camera-rig" position="0 1.6 3">
+            <a-entity camera look-controls="touchEnabled: true; mouseEnabled: true"
+                wasd-controls="enabled: false"></a-entity>
+        </a-entity>
+    </a-scene>
+
+    <script src="/static/js/common.js"></script>
+    <script src="/static/js/chat.js"></script>
+    <script src="/static/js/viewer.js"></script>
+</body>
+
+</html>

@@ -1,1 +1,12 @@
+# Секреты и окружение
+.env
 env.json
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Временные файлы
+_chk/
+*.tmp
