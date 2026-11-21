@@ -76,8 +76,6 @@ const StanModes = (() => {
 
     // ---------- Построение AR-сцены ----------
     function buildARScene() {
-        const root = document.getElementById('scene-root');
-
         const scene = document.createElement('a-scene');
         scene.setAttribute('embedded', '');
         scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false;');
@@ -104,14 +102,18 @@ const StanModes = (() => {
         // ("#tank-model asset not found" и пустой маркер).
         const marker = document.createElement('a-marker');
         marker.setAttribute('type', 'pattern');
-        marker.setAttribute('url', '/static/assets/pattern-Stan_pattern.patt');
+        marker.setAttribute('url', '/static/assets/pattern-Stan_pattern.patt?v=2');
 
         const obj = document.createElement('a-entity');
         obj.id = 'target-object-ar';
-        obj.setAttribute('gltf-model', '/static/assets/StanNew.glb');
+        obj.setAttribute('gltf-model', '/static/assets/StanNew.glb?v=2');
         obj.setAttribute('position', '0 0 0');
         obj.setAttribute('rotation', '0 0 0');
         obj.setAttribute('scale', '0.8 0.8 0.8');
+        obj.addEventListener('model-error', (e) => {
+            console.error('AR: ошибка загрузки модели:', e.detail);
+            StanApp.showToast('⚠️ Ошибка загрузки 3D-модели');
+        });
         marker.appendChild(obj);
         scene.appendChild(marker);
 
@@ -119,7 +121,20 @@ const StanModes = (() => {
         camera.setAttribute('camera', '');
         scene.appendChild(camera);
 
-        root.appendChild(scene);
+        // Диагностика: якорь arjs-anchor эмитит markerFound/markerLost на элемент
+        marker.addEventListener('markerFound', () => {
+            console.log('AR: маркер найден');
+            StanApp.showToast('✅ Маркер найден');
+        });
+        marker.addEventListener('markerLost', () => {
+            console.log('AR: маркер потерян');
+        });
+        scene.addEventListener('loaded', () => console.log('AR: сцена инициализирована'));
+
+        // ВАЖНО: сцена — прямой ребёнок body, как в оригинальном index.html.
+        // Обёртка-div без высоты обнуляет размер embedded-сцены (canvas 0x0),
+        // из-за чего модель не отображалась, хотя видеопоток шёл.
+        document.body.appendChild(scene);
         arSceneEl = scene;
 
         // Подсветка деталей: слушатели model-loaded уже после создания сущностей
@@ -171,7 +186,7 @@ const StanModes = (() => {
 
         try {
             if (!arLibsLoaded) {
-                await loadScript('/static/vendor/aframe-ar.js');
+                await loadScript('/static/vendor/aframe-ar.js?v=2');
                 arLibsLoaded = true;
             }
             teardownAR(); // на случай остатков от прошлой попытки

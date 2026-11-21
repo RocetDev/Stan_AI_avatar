@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ассистент Стана</title>
 
-    <link rel="stylesheet" href="/static/css/style.css">
-    <script src="/static/vendor/aframe.min.js"></script>
-    <script src="/static/vendor/aframe-extras.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css?v=2">
+    <script src="/static/vendor/aframe.min.js?v=2"></script>
+    <script src="/static/vendor/aframe-extras.min.js?v=2"></script>
 </head>
 
 <body>
@@ -37,11 +37,9 @@
         </div>
     </div>
 
-    <!-- Контейнер для динамически создаваемой AR-сцены (см. js/app.js).
-         3D-сцена ниже работает всегда, камера не нужна: при переключении
-         в AR она ставится на паузу и скрывается. -->
-    <div id="scene-root"></div>
-
+    <!-- 3D-сцена ниже работает всегда, камера не нужна: при переключении
+         в AR она ставится на паузу и скрывается, а AR-сцена добавляется
+         прямым ребёнком body (см. js/app.js). -->
     <a-scene id="scene-3d" embedded
         renderer="physicallyCorrectLights: true; colorManagement: true;">
 
@@ -64,9 +62,9 @@
         </a-entity>
     </a-scene>
 
-    <script src="/static/js/common.js"></script>
-    <script src="/static/js/chat.js"></script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/common.js?v=2"></script>
+    <script src="/static/js/chat.js?v=2"></script>
+    <script src="/static/js/app.js?v=2"></script>
 </body>
 
 </html>
