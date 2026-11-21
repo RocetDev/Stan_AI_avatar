@@ -64,21 +64,26 @@ const StanModes = (() => {
         const s = getScene3d();
         if (!s) return;
         s.pause();
-        s.style.visibility = 'hidden';
+        // ВАЖНО: display:none, а не visibility:hidden — visibility сохраняет
+        // место в потоке документа, и AR-сцена, добавленная в body, уезжает
+        // за нижний край экрана (canvas рендерит, но за viewport).
+        s.style.display = 'none';
     }
 
     function show3D() {
         const s = getScene3d();
         if (!s) return;
-        s.style.visibility = '';
+        s.style.display = '';
         s.play();
+        // после возвращения в поток нужно пересчитать размеры
+        window.dispatchEvent(new Event('resize'));
     }
 
     // ---------- Построение AR-сцены ----------
     function buildARScene() {
         const scene = document.createElement('a-scene');
         scene.setAttribute('embedded', '');
-        scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false;');
+        scene.setAttribute('arjs', 'sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;');
         scene.setAttribute('renderer', 'physicallyCorrectLights: true; colorManagement: true;');
 
         // Свет — как в оригинальном index.html (свет жил внутри маркера)
@@ -107,13 +112,12 @@ const StanModes = (() => {
         const obj = document.createElement('a-entity');
         obj.id = 'target-object-ar';
         obj.setAttribute('gltf-model', '/static/assets/StanNew.glb?v=2');
-        // Трансформы — ТОЧНО как в рабочем all_in_one.html. Модель крупная
-        // (~2.5 м): при position 0 0 0 камера телефона оказывается внутри
-        // модели (backface-culling -> невидима), поэтому вынесена за маркер
-        // и увеличена.
-        obj.setAttribute('position', '-1 0 -2');
+        // Модель ~2.65 м в ширину, её центр смещён (x: -0.16..2.49).
+        // Смещаем так, чтобы она стояла по центру маркера и цела помещалась
+        // в кадр при обычной дистанции телефона.
+        obj.setAttribute('position', '-1.1 0 0');
         obj.setAttribute('rotation', '0 0 0');
-        obj.setAttribute('scale', '1.8 1.8 1.8');
+        obj.setAttribute('scale', '1 1 1');
         obj.addEventListener('model-error', (e) => {
             console.error('AR: ошибка загрузки модели:', e.detail);
             StanApp.showToast('⚠️ Ошибка загрузки 3D-модели');
@@ -136,8 +140,14 @@ const StanModes = (() => {
         scene.addEventListener('loaded', () => console.log('AR: сцена инициализирована'));
 
         // ВАЖНО: сцена — прямой ребёнок body, как в оригинальном index.html.
-        // Обёртка-div без высоты обнуляет размер embedded-сцены (canvas 0x0),
-        // из-за чего модель не отображалась, хотя видеопоток шёл.
+        // position: fixed убирает её из потока и прижимает к экрану поверх
+        // видео (z-index -2), но под кнопками интерфейса (z-index 20).
+        scene.style.position = 'fixed';
+        scene.style.top = '0';
+        scene.style.left = '0';
+        scene.style.width = '100%';
+        scene.style.height = '100%';
+        scene.style.zIndex = '1';
         document.body.appendChild(scene);
         arSceneEl = scene;
 
@@ -190,7 +200,7 @@ const StanModes = (() => {
 
         try {
             if (!arLibsLoaded) {
-                await loadScript('/static/vendor/aframe-ar.js?v=2');
+                await loadScript('/static/vendor/aframe-ar.js?v=3');
                 arLibsLoaded = true;
             }
             teardownAR(); // на случай остатков от прошлой попытки

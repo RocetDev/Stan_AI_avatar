@@ -30,6 +30,15 @@ app.include_router(chat.router, prefix="/api", tags=["chat"])
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
+@app.middleware("http")
+async def no_cache_static(request, call_next):
+    """Статика всегда ревалидируется — браузер не отдает устаревший JS после правок."""
+    response = await call_next(request)
+    if request.url.path.startswith("/static"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.get("/")
 async def index() -> FileResponse:
     """3D-просмотрщик с ИИ-ассистентом."""
