@@ -115,9 +115,9 @@ const StanModes = (() => {
         // Модель ~2.65 м в ширину, её центр смещён (x: -0.16..2.49).
         // Смещаем так, чтобы она стояла по центру маркера и цела помещалась
         // в кадр при обычной дистанции телефона.
-        obj.setAttribute('position', '-1.1 0 0');
+        obj.setAttribute('position', '-0.55 0.05 0');
         obj.setAttribute('rotation', '0 0 0');
-        obj.setAttribute('scale', '1 1 1');
+        obj.setAttribute('scale', '0.5 0.5 0.5');
         obj.addEventListener('model-error', (e) => {
             console.error('AR: ошибка загрузки модели:', e.detail);
             StanApp.showToast('⚠️ Ошибка загрузки 3D-модели');
