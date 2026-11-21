@@ -107,11 +107,11 @@ const StanModes = (() => {
         // ("#tank-model asset not found" и пустой маркер).
         const marker = document.createElement('a-marker');
         marker.setAttribute('type', 'pattern');
-        marker.setAttribute('url', '/static/assets/pattern-Stan_pattern.patt?v=2');
+        marker.setAttribute('url', '/static/assets/pattern-Stan_pattern.patt');
 
         const obj = document.createElement('a-entity');
         obj.id = 'target-object-ar';
-        obj.setAttribute('gltf-model', '/static/assets/StanNew.glb?v=2');
+        obj.setAttribute('gltf-model', '/static/assets/StanNew.glb');
         // Модель ~2.65 м в ширину, её центр смещён (x: -0.16..2.49).
         // Смещаем так, чтобы она стояла по центру маркера и цела помещалась
         // в кадр при обычной дистанции телефона.
@@ -200,7 +200,7 @@ const StanModes = (() => {
 
         try {
             if (!arLibsLoaded) {
-                await loadScript('/static/vendor/aframe-ar.js?v=3');
+                await loadScript('/static/vendor/aframe-ar.js');
                 arLibsLoaded = true;
             }
             teardownAR(); // на случай остатков от прошлой попытки

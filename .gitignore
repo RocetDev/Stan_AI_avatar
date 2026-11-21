@@ -8,5 +8,6 @@ __pycache__/
 *.pyc
 
 # Временные файлы
-_chk/
+*.log
 *.tmp
+_chk/
