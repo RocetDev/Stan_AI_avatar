@@ -107,9 +107,13 @@ const StanModes = (() => {
         const obj = document.createElement('a-entity');
         obj.id = 'target-object-ar';
         obj.setAttribute('gltf-model', '/static/assets/StanNew.glb?v=2');
-        obj.setAttribute('position', '0 0 0');
+        // Трансформы — ТОЧНО как в рабочем all_in_one.html. Модель крупная
+        // (~2.5 м): при position 0 0 0 камера телефона оказывается внутри
+        // модели (backface-culling -> невидима), поэтому вынесена за маркер
+        // и увеличена.
+        obj.setAttribute('position', '-1 0 -2');
         obj.setAttribute('rotation', '0 0 0');
-        obj.setAttribute('scale', '0.8 0.8 0.8');
+        obj.setAttribute('scale', '1.8 1.8 1.8');
         obj.addEventListener('model-error', (e) => {
             console.error('AR: ошибка загрузки модели:', e.detail);
             StanApp.showToast('⚠️ Ошибка загрузки 3D-модели');
