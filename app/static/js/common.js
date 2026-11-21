@@ -108,10 +108,20 @@ const StanApp = (() => {
         }, delay);
     }
 
+    // Активная сцена: при AR-режиме 3D-сцена скрыта (visibility: hidden),
+    // подсветка должна идти по видимой сцене
+    function getActiveScene() {
+        const scenes = document.querySelectorAll('a-scene');
+        for (const s of scenes) {
+            if (s.style.visibility !== 'hidden') return s;
+        }
+        return scenes[0] || null;
+    }
+
     function highlightPart(partId) {
         invalidatePendingReset();
 
-        const scene = document.querySelector('a-scene');
+        const scene = getActiveScene();
         if (!scene || !scene.object3D) return;
 
         const lowerNames = expandNames(partId).map(n => n.toLowerCase());
@@ -127,7 +137,7 @@ const StanApp = (() => {
     function resetHighlights() {
         invalidatePendingReset();
 
-        const scene = document.querySelector('a-scene');
+        const scene = getActiveScene();
         if (scene && scene.object3D) {
             scene.object3D.traverse((child) => {
                 if (child.isMesh && originalMaterials.has(child.uuid)) {
@@ -139,12 +149,15 @@ const StanApp = (() => {
         document.querySelectorAll('.part-card.highlighted').forEach(c => c.classList.remove('highlighted'));
     }
 
-    // Слушатели model-loaded на всех сущностях с gltf-model
+    // Слушатели model-loaded на всех сущностях с gltf-model.
+    // Если модель уже загружена (динамическая сцена) — обрабатываем сразу
     function initModelListeners() {
         document.querySelectorAll('[gltf-model]').forEach(modelEl => {
-            modelEl.addEventListener('model-loaded', () => {
+            const attach = () => {
                 if (modelEl.object3D) ensureOriginals(modelEl.object3D);
-            });
+            };
+            modelEl.addEventListener('model-loaded', attach);
+            if (modelEl.hasLoaded) attach();
         });
     }
 

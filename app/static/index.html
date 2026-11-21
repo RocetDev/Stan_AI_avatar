@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Ассистент Стана</title>
+    <title>Ассистент Стана</title>
 
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="/static/vendor/aframe.min.js"></script>
@@ -13,6 +13,7 @@
 
 <body>
     <button id="toggle-panel-btn" class="control-btn" title="Справочник деталей">☰</button>
+    <button id="mode-toggle-btn" class="control-btn" title="Переключить в AR-режим">📷 AR</button>
     <button id="toggle-chat-btn" title="Открыть чат">💬</button>
     <button id="stop-btn" class="btn" title="Остановить речь">⏹</button>
 
@@ -36,8 +37,13 @@
         </div>
     </div>
 
-    <a-scene embedded
-        renderer="physicallyCorrectLights: true; toneMapping: ACESFilmic; toneMappingExposure: 2.0; colorManagement: true;">
+    <!-- Контейнер для динамически создаваемой AR-сцены (см. js/app.js).
+         3D-сцена ниже работает всегда, камера не нужна: при переключении
+         в AR она ставится на паузу и скрывается. -->
+    <div id="scene-root"></div>
+
+    <a-scene id="scene-3d" embedded
+        renderer="physicallyCorrectLights: true; colorManagement: true;">
 
         <a-assets>
             <a-asset-item id="tank-model" src="/static/assets/StanNew.glb"></a-asset-item>
@@ -60,7 +66,7 @@
 
     <script src="/static/js/common.js"></script>
     <script src="/static/js/chat.js"></script>
-    <script src="/static/js/viewer.js"></script>
+    <script src="/static/js/app.js"></script>
 </body>
 
 </html>

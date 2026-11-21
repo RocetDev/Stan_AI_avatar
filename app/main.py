@@ -4,7 +4,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api import chat, health
@@ -37,9 +37,9 @@ async def index() -> FileResponse:
 
 
 @app.get("/ar")
-async def ar_page() -> FileResponse:
-    """AR-режим (требует камеру; при её отсутствии — дружелюбный fallback)."""
-    return FileResponse(STATIC_DIR / "ar.html", media_type="text/html")
+async def ar_page() -> RedirectResponse:
+    """AR-режим встроен в главную страницу (кнопка-переключатель)."""
+    return RedirectResponse(url="/")
 
 
 if __name__ == "__main__":

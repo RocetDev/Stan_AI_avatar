@@ -35,6 +35,21 @@ html, body { height: 100%; }
 }
 #toggle-panel-btn.panel-open { left: 320px; }
 
+#mode-toggle-btn {
+    top: 20px;
+    left: 55px;
+    width: auto;
+    padding: 0 14px;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    background: #2e7d32;
+}
+#mode-toggle-btn:hover { background: #1b5e20; }
+#mode-toggle-btn:disabled { opacity: 0.6; cursor: wait; }
+/* сдвигаем вместе с панелью деталей */
+#toggle-panel-btn.panel-open ~ #mode-toggle-btn { left: 375px; }
+
 /* ============ ЛЕВАЯ ПАНЕЛЬ ============ */
 #info-panel {
     position: absolute;
